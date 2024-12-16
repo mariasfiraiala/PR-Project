@@ -1,0 +1,6 @@
+fastapi[standard]
+psycopg2-binary
+pydantic
+sqlalchemy==2.0.15
+paho-mqtt
+requests

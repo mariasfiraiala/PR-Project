@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      dockerfile: api.Dockerfile
+    command: fastapi dev api/api.py --port 55000
+    volumes:
+      - .:/app
+    ports:
+      - 55001:55000
+    network_mode: "host"
+    depends_on:
+      - db
+      - mqtt
+
+  mqtt:
+    build:
+      context: .
+      dockerfile: mqtt.Dockerfile
+    environment:
+      - MQTT_BROKER=localhost
+      - MQTT_PORT=1883
+      - MQTT_TOPIC=sensor/data
+      - FASTAPI_URL=http://localhost:55000/data/
+    network_mode: "host"
+    depends_on:
+      - mosquitto
+
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    network_mode: "host"
+
+  db:
+    image: postgres:15-alpine
+    expose:
+      - 5432
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=user
+      - POSTGRES_DB=sensors
+    network_mode: "host"
+  
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    network_mode: "host"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
+  grafana-data:
