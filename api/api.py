@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Float, Integer, DateTime, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import datetime
+
 
 SQLALCHEMY_DATABASE_URL = "postgresql://user:user@localhost/sensors"
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
@@ -40,8 +40,5 @@ async def post_data(data: SensorData):
 
 @app.get("/")
 async def root():
-    db = SessionLocal()
-    data = db.query(SensorDataDB).all()
-
     return {"message": "hello"}
 

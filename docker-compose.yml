@@ -3,26 +3,28 @@ version: '3.8'
 services:
   api:
     build:
-      dockerfile: api.Dockerfile
-    command: fastapi dev api/api.py --port 55000
-    volumes:
-      - .:/app
+      context: ./api
+      dockerfile: Dockerfile
     ports:
       - 55001:55000
     network_mode: "host"
     depends_on:
-      - db
-      - mqtt
+      db:
+        condition: service_healthy
+      mqtt:
+        condition: service_started
 
   mqtt:
     build:
-      context: .
-      dockerfile: mqtt.Dockerfile
+      context: ./mqtt
+      dockerfile: Dockerfile
     environment:
       - MQTT_BROKER=localhost
-      - MQTT_PORT=1883
+      - MQTT_PORT=8883
       - MQTT_TOPIC=sensor/data
       - FASTAPI_URL=http://localhost:55000/data/
+    volumes:
+      - ./mqtt/certificates:/etc/ca-certificates/
     network_mode: "host"
     depends_on:
       - mosquitto
@@ -33,7 +35,8 @@ services:
       - "1883:1883"
       - "9001:9001"
     volumes:
-      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/certificates:/etc/ca-certificates/
     network_mode: "host"
 
   db:
@@ -44,7 +47,15 @@ services:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=user
       - POSTGRES_DB=sensors
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     network_mode: "host"
+    healthcheck:      
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -t 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
   
   grafana:
     image: grafana/grafana
@@ -55,8 +66,9 @@ services:
       - grafana-data:/var/lib/grafana
     network_mode: "host"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
-  postgres_data:
+  postgres-data:
   grafana-data:
