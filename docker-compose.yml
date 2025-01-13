@@ -7,13 +7,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - 55001:55000
+    volumes:
+      - ./api/certificates:/etc/ca-certificates/
     network_mode: "host"
     depends_on:
-      db:
-        condition: service_healthy
-      mqtt:
-        condition: service_started
-
+      - mqtt
   mqtt:
     build:
       context: ./mqtt
@@ -27,13 +25,16 @@ services:
       - ./mqtt/certificates:/etc/ca-certificates/
     network_mode: "host"
     depends_on:
-      - mosquitto
+      mosquitto:
+        condition: service_started
+      db:
+        condition: service_healthy
 
   mosquitto:
     image: eclipse-mosquitto:latest
     ports:
-      - "1883:1883"
-      - "9001:9001"
+      - "8883:8883"
+      - "8884:8884"
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
       - ./mosquitto/certificates:/etc/ca-certificates/
@@ -64,6 +65,7 @@ services:
       - "3000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
+      - ./grafana:/etc/grafana/provisioning
     network_mode: "host"
     depends_on:
       db:

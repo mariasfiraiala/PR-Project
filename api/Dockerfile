@@ -8,4 +8,4 @@ ENV PYTHONUNBUFFERED 1
 
 RUN pip install -r requirements.txt
 
-CMD ["fastapi", "dev", "api.py", "--port", "55000"]
+CMD ["python", "api.py"]

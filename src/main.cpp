@@ -13,7 +13,7 @@ DHT_Unified dht(DHTPIN, DHTTYPE);
 
 const char* ssid = "marias";
 const char* password = "rvft2191";
-const char* mqtt_server = "192.168.27.36";
+IPAddress mqtt_server = {192, 168, 27, 36};
 const int mqtt_server_port = 8884;
 
 const char CA_cert[] = \
@@ -133,6 +133,9 @@ void setup() {
 void reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
+
+    WiFi.mode(WIFI_STA);
+
     if (client.connect("ESP32Client")) {
       Serial.println("connected");
     } else {

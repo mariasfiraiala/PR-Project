@@ -1,38 +1,52 @@
 import paho.mqtt.client as mqtt
-import requests
 import json
-import time
 import os
-import ssl
+from sqlalchemy import create_engine, Column, Float, Integer, DateTime, func
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 MQTT_BROKER = os.getenv('MQTT_BROKER', 'localhost')
 MQTT_PORT = int(os.getenv('MQTT_PORT', 8883))
 MQTT_TOPIC = os.getenv('MQTT_TOPIC', 'sensor/data')
-FASTAPI_URL = os.getenv('FASTAPI_URL', 'http://localhost:55000/data/')
+SQLALCHEMY_DATABASE_URL = "postgresql://user:user@localhost/sensors"
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+
+class SensorDataDB(Base):
+    __tablename__ = "sensor_data"
+    id = Column(Integer, primary_key=True, index=True)
+    humidity = Column(Float)
+    temperature = Column(Float)
+    pressure = Column(Float)
+    time = Column(DateTime, server_default=func.now())
+
+Base.metadata.create_all(bind=engine)
 
 def on_connect(client, userdata, flags, rc, properties):
     client.subscribe(MQTT_TOPIC)
 
 def on_message(client, userdata, msg):
     try:
-        print(msg)
+        print(msg.payload)
         payload = json.loads(msg.payload)
         required_fields = ['humidity', 'temperature', 'pressure']
         if not all(field in payload for field in required_fields):
             print(f"Bad data: {payload}")
             return
         
-        response = requests.post(FASTAPI_URL, json=payload)
-        
-        if response.status_code == 200:
-            print(f"Success: {payload}")
-        else:
-            print(f"Fail: {response.status_code}")
+
+        db = SessionLocal()
+        try:
+            db_data = SensorDataDB(**payload)
+            db.add(db_data)
+            db.commit()
+            return {"message": "Data added successfully", "data": payload}
+        finally:
+            db.close()
     
     except json.JSONDecodeError:
         print(f"Failed to decode JSON: {msg.payload}")
-    except requests.RequestException as e:
-        print(f"Request error: {e}")
 
 def main():
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
